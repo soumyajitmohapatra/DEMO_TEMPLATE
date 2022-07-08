@@ -1,72 +1,96 @@
-const User = require('../model/User');
-const jwt = require('jsonwebtoken');
+const User = require("../model/User");
+const jwt = require("jsonwebtoken");
 
-const handleRefreshToken = async (req, res) => {
-    const cookies = req.cookies;
-    if (!cookies?.jwt) return res.sendStatus(401);
-    const refreshToken = cookies.jwt;
-    res.clearCookie('jwt', { httpOnly: true, sameSite: 'None', secure: true });
+const handleRefreshToken = async (req, res, pool) => {
+  const cookies = req.cookies;
+  if (!cookies?.jwt) return res.sendStatus(401);
+  const refreshToken = cookies.jwt;
+  res.clearCookie("jwt", { httpOnly: true, sameSite: "None", secure: true });
 
-    const foundUser = await User.findOne({ refreshToken }).exec();
-
-    // Detected refresh token reuse!
-    if (!foundUser) {
-        jwt.verify(
-            refreshToken,
-            process.env.REFRESH_TOKEN_SECRET,
-            async (err, decoded) => {
-                if (err) return res.sendStatus(403); //Forbidden
-                // Delete refresh tokens of hacked user
-                const hackedUser = await User.findOne({ username: decoded.username }).exec();
-                hackedUser.refreshToken = [];
-                const result = await hackedUser.save();
-            }
-        )
-        return res.sendStatus(403); //Forbidden
-    }
-
-    const newRefreshTokenArray = foundUser.refreshToken.filter(rt => rt !== refreshToken);
-
-    // evaluate jwt 
-    jwt.verify(
-        refreshToken,
-        process.env.REFRESH_TOKEN_SECRET,
-        async (err, decoded) => {
+  pool.query(
+    `SELECT user_name, refresh_token FROM admin.user_master where '${refreshToken}' =  SOME (refresh_token)`,
+    (err, token) => {
+      // Detected refresh token reuse!
+      if (err) {
+        res.send(err);
+      } else if (token.rows) {
+        pool.query(
+          `UPDATE admin.user_master SET refresh_token = (SELECT array_remove(refresh_token, '${refreshToken}') FROM admin.user_master)
+          `,
+          (err, result) => {
             if (err) {
-                // expired refresh token
-                foundUser.refreshToken = [...newRefreshTokenArray];
-                const result = await foundUser.save();
+              res.send(err);
             }
-            if (err || foundUser.username !== decoded.username) return res.sendStatus(403);
+          }
+        );
+        // evaluate jwt
+        jwt.verify(
+          refreshToken,
+          process.env.REFRESH_TOKEN_SECRET,
+          async (err, decoded) => {
+            if (err) {
+              // expired refresh token
+              return res.sendStatus(403);
+            }
+            if (err || token.rows[0].user_name !== decoded.username)
+              return res.sendStatus(403);
 
             // Refresh token was still valid
-            const roles = Object.values(foundUser.roles);
             const accessToken = jwt.sign(
-                {
-                    "UserInfo": {
-                        "username": decoded.username,
-                        "roles": roles
-                    }
-                },
-                process.env.ACCESS_TOKEN_SECRET,
-                { expiresIn: '10s' }
+              {
+                usercode: decoded.usercode,
+                username: decoded.username,
+              },
+              process.env.ACCESS_TOKEN_SECRET,
+              { expiresIn: "10s" }
             );
 
             const newRefreshToken = jwt.sign(
-                { "username": foundUser.username },
-                process.env.REFRESH_TOKEN_SECRET,
-                { expiresIn: '15s' }
+              { username: decoded.username },
+              process.env.REFRESH_TOKEN_SECRET,
+              { expiresIn: "15s" }
             );
-            // Saving refreshToken with current user
-            foundUser.refreshToken = [...newRefreshTokenArray, newRefreshToken];
-            const result = await foundUser.save();
+            pool.query(
+              `UPDATE admin.user_master SET refresh_token = (SELECT array_append(refresh_token, '${newRefreshToken}') from admin.user_master)
+                `,
+              (err, result) => {
+                if (err) {
+                  res.send(err);
+                }
+              }
+            );
 
             // Creates Secure Cookie with refresh token
-            res.cookie('jwt', newRefreshToken, { httpOnly: true, secure: true, sameSite: 'None', maxAge: 24 * 60 * 60 * 1000 });
+            res.cookie("jwt", newRefreshToken, {
+              httpOnly: true,
+              secure: true,
+              sameSite: "None",
+              maxAge: 24 * 60 * 60 * 1000,
+            });
 
-            res.json({ accessToken })
-        }
-    );
-}
+            res.json({ accessToken });
+          }
+        );
+      } else {
+        jwt.verify(
+          refreshToken,
+          process.env.REFRESH_TOKEN_SECRET,
+          async (err, decoded) => {
+            if (err) return res.sendStatus(403); //Forbidden
+            // Delete refresh tokens of hacked user
+            pool.query(
+              `UPDATE admin.user_master SET refresh_token = null`,
+              (err, result) => {
+                if (err) {
+                  res.send(err);
+                }
+              }
+            );
+          }
+        );
+      }
+    }
+  );
+};
 
-module.exports = { handleRefreshToken }
+module.exports = { handleRefreshToken };
