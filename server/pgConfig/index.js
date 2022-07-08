@@ -1,10 +1,9 @@
-
-import pg from "pg";
-
-const pool = new Pool({
-  user: 'me',
-  host: 'localhost',
-  database: 'api',
-  password: 'password',
+const config = {
+  user: "postgres",
+  host: "localhost",
+  database: "demodb",
+  password: "techlab",
   port: 5432,
-})
+};
+
+export default config;
