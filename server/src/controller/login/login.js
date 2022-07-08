@@ -40,7 +40,6 @@ const handleLogin = async (req, res, pool) => {
         );
         const newRefreshToken = jwt.sign(
           {
-            usercode: response.rows[0].user_code,
             username: response.rows[0].username,
           },
           process.env.REFRESH_TOKEN_SECRET,
@@ -63,7 +62,7 @@ const handleLogin = async (req, res, pool) => {
               // Detected refresh token reuse!
               if (err) {
                 res.send(err);
-              } else if (token.rows) {
+              } else if (token.rows.length) {
                 // clear out that previous refresh tokens
                 pool.query(
                   `UPDATE admin.user_master SET refresh_token = (SELECT array_remove(refresh_token, '${refreshToken}') FROM admin.user_master)
@@ -71,9 +70,7 @@ const handleLogin = async (req, res, pool) => {
                   (err, result) => {
                     if (err) {
                       res.send(err);
-                    } else {
-                      res.send(result.rows);
-                    }
+                    } 
                   }
                 );
               } else {
@@ -83,9 +80,7 @@ const handleLogin = async (req, res, pool) => {
                   (err, result) => {
                     if (err) {
                       res.send(err);
-                    } else {
-                      res.send(result.rows);
-                    }
+                    } 
                   }
                 );
               }
@@ -104,12 +99,9 @@ const handleLogin = async (req, res, pool) => {
           (err, result) => {
             if (err) {
               res.send(err);
-            } else {
-              res.send(result);
             }
           }
         );
-        // return;
         // Creates Secure Cookie with refresh token
         res.cookie("jwt", newRefreshToken, {
           httpOnly: true,
