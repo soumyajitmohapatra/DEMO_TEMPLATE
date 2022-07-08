@@ -46,19 +46,7 @@ const handleLogin = async (req, res, pool) => {
           process.env.REFRESH_TOKEN_SECRET,
           { expiresIn: "1d" }
         );
-        // !cookies?.jwt
-        // ? response.rows[0].refresh_token
-        //   ? response.rows[0].refresh_token
-        //   : response.rows[0].refresh_token.filter((rt) => rt !== cookies.jwt)
-        // : [];
 
-        let newRefreshTokenArray = !cookies?.jwt
-          ? !response.rows[0].refresh_token
-            ? []
-            : response.rows[0].refresh_token
-          : !response.rows[0].refresh_token
-          ? []
-          : response.rows[0].refresh_token.filter((rt) => rt !== cookies.jwt);
         if (cookies?.jwt) {
           /* 
                   Scenario added here: 
@@ -68,37 +56,59 @@ const handleLogin = async (req, res, pool) => {
                   */
           console.log("called");
           const refreshToken = cookies.jwt;
-          const foundToken =
-            pool.query(`SELECT user_name, password, user_code, refresh_token
-            FROM admin.user_master where '${refreshToken}' =  SOME (refresh_token)`);
 
-          // Detected refresh token reuse!
-          if (!foundToken) {
-            // clear out ALL previous refresh tokens
-            newRefreshTokenArray = [];
-          }
-
+          pool.query(
+            `SELECT  refresh_token FROM admin.user_master where '${refreshToken}' =  SOME (refresh_token)`,
+            (err, token) => {
+              // Detected refresh token reuse!
+              if (err) {
+                res.send(err);
+              } else if (token.rows) {
+                // clear out that previous refresh tokens
+                pool.query(
+                  `UPDATE admin.user_master SET refresh_token = (SELECT array_remove(refresh_token, '${refreshToken}') FROM admin.user_master)
+                `,
+                  (err, result) => {
+                    if (err) {
+                      res.send(err);
+                    } else {
+                      res.send(result.rows);
+                    }
+                  }
+                );
+              } else {
+                // clear out ALL previous refresh tokens
+                pool.query(
+                  `UPDATE admin.user_master SET refresh_token = null`,
+                  (err, result) => {
+                    if (err) {
+                      res.send(err);
+                    } else {
+                      res.send(result.rows);
+                    }
+                  }
+                );
+              }
+            }
+          );
           res.clearCookie("jwt", {
             httpOnly: true,
             sameSite: "None",
             secure: true,
           });
         }
-        // Saving refreshToken with current user
-        response.rows[0].refresh_token = [
-          ...newRefreshTokenArray,
-          newRefreshToken,
-        ];
-        // pool.query(
-        //   `UPDATE admin.user_master SET refresh_token = ARRAY [${response.rows[0].refresh_token}]`,
-        //   (err, result) => {
-        //     if (err) {
-        //       res.send(err);
-        //     } else {
-        //       res.send(result);
-        //     }
-        //   }
-        // );
+
+        pool.query(
+          `UPDATE admin.user_master SET refresh_token = (SELECT array_append(refresh_token, '${newRefreshToken}') from admin.user_master)
+          `,
+          (err, result) => {
+            if (err) {
+              res.send(err);
+            } else {
+              res.send(result);
+            }
+          }
+        );
         // return;
         // Creates Secure Cookie with refresh token
         res.cookie("jwt", newRefreshToken, {
@@ -112,13 +122,7 @@ const handleLogin = async (req, res, pool) => {
         let key = "data";
         dataStatus[key] = response.rows[0];
 
-        let jsonStr = response.rows[0].refresh_token.join(" ");
-
-        let str = `UPDATE admin.user_master SET refresh_token = ARRAY ${jsonStr}`;
-        res.status(200).json({
-          t: response.rows[0].refresh_token,
-          a: jsonStr,
-        });
+        res.status(200).json(dataStatus);
       } else {
         let dataStatus = {
           status: "failed",
