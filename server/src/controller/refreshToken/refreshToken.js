@@ -1,5 +1,4 @@
-const User = require("../model/User");
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
 const handleRefreshToken = async (req, res, pool) => {
   const cookies = req.cookies;
@@ -13,7 +12,7 @@ const handleRefreshToken = async (req, res, pool) => {
       // Detected refresh token reuse!
       if (err) {
         res.send(err);
-      } else if (token.rows) {
+      } else if (token.rows.length) {
         pool.query(
           `UPDATE admin.user_master SET refresh_token = (SELECT array_remove(refresh_token, '${refreshToken}') FROM admin.user_master)
           `,
@@ -93,4 +92,5 @@ const handleRefreshToken = async (req, res, pool) => {
   );
 };
 
-module.exports = { handleRefreshToken };
+
+export default { handleRefreshToken };

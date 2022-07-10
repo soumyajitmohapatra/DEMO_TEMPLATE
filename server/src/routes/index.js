@@ -1,6 +1,6 @@
 import express from "express";
 import pg from "pg";
-import config from "../../pgConfig/index.js";
+import config from "../../config/pgConfig.js";
 import login from "../controller/login/login.js";
 
 let pool = new pg.Pool(config);

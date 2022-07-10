@@ -4,6 +4,7 @@ const handleLogin = async (req, res, pool) => {
   const cookies = req.cookies;
 
   const { username, password } = req.body;
+
   if (!username || !password)
     return res
       .status(400)
@@ -70,7 +71,7 @@ const handleLogin = async (req, res, pool) => {
                   (err, result) => {
                     if (err) {
                       res.send(err);
-                    } 
+                    }
                   }
                 );
               } else {
@@ -80,7 +81,7 @@ const handleLogin = async (req, res, pool) => {
                   (err, result) => {
                     if (err) {
                       res.send(err);
-                    } 
+                    }
                   }
                 );
               }
@@ -110,9 +111,14 @@ const handleLogin = async (req, res, pool) => {
           maxAge: 24 * 60 * 60 * 1000,
         });
 
-        dataStatus["token"] = accessToken;
+        dataStatus["accessToken"] = accessToken;
+        dataStatus["refreshToken"] = newRefreshToken;
+
         let key = "data";
-        dataStatus[key] = response.rows[0];
+        dataStatus[key] = {
+          user_name: response.rows[0].user_name,
+          user_code: response.rows[0].user_code,
+        };
 
         res.status(200).json(dataStatus);
       } else {
