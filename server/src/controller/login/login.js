@@ -32,16 +32,17 @@ const handleLogin = async (req, res, pool) => {
         const accessToken = jwt.sign(
           {
             usercode: response.rows[0].user_code,
-            username: response.rows[0].username,
+            username: response.rows[0].user_name,
           },
           process.env.ACCESS_TOKEN_SECRET,
           {
-            expiresIn: "3s",
+            expiresIn: "10s",
           }
         );
         const newRefreshToken = jwt.sign(
           {
-            username: response.rows[0].username,
+            usercode: response.rows[0].user_code,
+            username: response.rows[0].user_name,
           },
           process.env.REFRESH_TOKEN_SECRET,
           { expiresIn: "1d" }
@@ -54,7 +55,6 @@ const handleLogin = async (req, res, pool) => {
                       2) RT is stolen
                       3) If 1 & 2, reuse detection is needed to clear all RTs when user logs in
                   */
-          console.log("called");
           const refreshToken = cookies.jwt;
 
           pool.query(
@@ -89,8 +89,9 @@ const handleLogin = async (req, res, pool) => {
           );
           res.clearCookie("jwt", {
             httpOnly: true,
-            sameSite: "None",
             secure: true,
+            sameSite: "None",
+            maxAge: 24 * 60 * 60 * 1000,
           });
         }
 
@@ -113,8 +114,6 @@ const handleLogin = async (req, res, pool) => {
         });
 
         dataStatus["accessToken"] = accessToken;
-        dataStatus["refreshToken"] = newRefreshToken;
-
         let key = "data";
         dataStatus[key] = {
           user_name: response.rows[0].user_name,
