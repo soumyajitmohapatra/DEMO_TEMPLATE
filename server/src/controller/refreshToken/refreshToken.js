@@ -7,7 +7,7 @@ const handleRefreshToken = async (req, res, pool) => {
   res.clearCookie("jwt", { httpOnly: true, sameSite: "None", secure: true });
 
   pool.query(
-    `SELECT user_name, refresh_token FROM admin.user_master where '${refreshToken}' =  SOME (refresh_token)`,
+    `SELECT user_name, refresh_token, user_code FROM admin.user_master where '${refreshToken}' =  SOME (refresh_token)`,
     (err, token) => {
       // Detected refresh token reuse!
       if (err) {
@@ -29,25 +29,28 @@ const handleRefreshToken = async (req, res, pool) => {
           async (err, decoded) => {
             if (err) {
               // expired refresh token
-              return res.sendStatus(403);
+              return res.status(403).send("decode err");
             }
-            if (err || token.rows[0].user_name !== decoded.username)
-              return res.sendStatus(403);
+            if (err || token.rows[0].user_code !== decoded.usercode)
+              return res.status(403).send("invalid");
 
             // Refresh token was still valid
             const accessToken = jwt.sign(
               {
-                usercode: decoded.usercode,
-                username: decoded.username,
+                usercode: token.rows[0].user_code,
+                username: token.rows[0].user_name,
               },
               process.env.ACCESS_TOKEN_SECRET,
               { expiresIn: "10s" }
             );
 
             const newRefreshToken = jwt.sign(
-              { username: decoded.username },
+              {
+                usercode: token.rows[0].user_code,
+                username: token.rows[0].user_name,
+              },
               process.env.REFRESH_TOKEN_SECRET,
-              { expiresIn: "15s" }
+              { expiresIn: "1d" }
             );
             pool.query(
               `UPDATE admin.user_master SET refresh_token = (SELECT array_append(refresh_token, '${newRefreshToken}') from admin.user_master)
@@ -91,6 +94,5 @@ const handleRefreshToken = async (req, res, pool) => {
     }
   );
 };
-
 
 export default { handleRefreshToken };
