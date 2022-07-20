@@ -6,6 +6,8 @@ import cookieParser from "cookie-parser";
 
 import router from "./src/routes/index.js";
 import corsOptions from "./config/corsOptions.js";
+import privateRoute from "./src/routes/privateRoute.js";
+import verifyJWT from "./src/middleware/verifyJwt.js";
 
 const app = express();
 
@@ -17,15 +19,9 @@ app.use(cookieParser());
 
 app.use("/", router);
 
-app.get("/cook", (req, res) => {
-  const cookies = req.cookies;
-  if (cookies?.auth) {
-    res.send(cookies);
-  } else {
-    res.cookie("auth", "soumyajit");
-    res.send({ txt: "cookies" });
-  }
-});
+app.use(verifyJWT);
+
+app.use("/", privateRoute);
 
 app.listen(process.env.PORT, () => {
   console.log(`App running on port ${process.env.PORT}.`);
