@@ -41,7 +41,7 @@ const handleRefreshToken = async (req, res, pool) => {
                 username: token.rows[0].user_name,
               },
               process.env.ACCESS_TOKEN_SECRET,
-              { expiresIn: "10s" }
+              { expiresIn: "30m" }
             );
 
             const newRefreshToken = jwt.sign(
@@ -66,8 +66,9 @@ const handleRefreshToken = async (req, res, pool) => {
             res.cookie("jwt", newRefreshToken, {
               httpOnly: true,
               secure: true,
-              sameSite: "None",
+              sameSite: "Strict",
               maxAge: 24 * 60 * 60 * 1000,
+              domain: "localhost",
             });
 
             res.json({ accessToken });
