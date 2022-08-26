@@ -3,8 +3,15 @@ import jwt from "jsonwebtoken";
 const handleRefreshToken = async (req, res, pool) => {
   const cookies = req.cookies;
   if (!cookies?.jwt) return res.sendStatus(401);
+
   const refreshToken = cookies.jwt;
-  res.clearCookie("jwt", { httpOnly: true, sameSite: "None", secure: true });
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "Strict",
+    maxAge: 24 * 60 * 60 * 1000,
+    domain: "localhost",
+  });
 
   pool.query(
     `SELECT user_name, refresh_token, user_code FROM admin.user_master where '${refreshToken}' =  SOME (refresh_token)`,
@@ -18,7 +25,7 @@ const handleRefreshToken = async (req, res, pool) => {
           `,
           (err, result) => {
             if (err) {
-              res.send(err);
+              return res.send(err);
             }
           }
         );
@@ -57,21 +64,21 @@ const handleRefreshToken = async (req, res, pool) => {
                 `,
               (err, result) => {
                 if (err) {
-                  res.send(err);
+                  return res.send(err);
+                } else {
+                  res.cookie("jwt", newRefreshToken, {
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: "Strict",
+                    maxAge: 24 * 60 * 60 * 1000,
+                    domain: "localhost",
+                  });
+                  res.json({ accessToken });
                 }
               }
             );
 
             // Creates Secure Cookie with refresh token
-            res.cookie("jwt", newRefreshToken, {
-              httpOnly: true,
-              secure: true,
-              sameSite: "Strict",
-              maxAge: 24 * 60 * 60 * 1000,
-              domain: "localhost",
-            });
-
-            res.json({ accessToken });
           }
         );
       } else {
@@ -85,8 +92,8 @@ const handleRefreshToken = async (req, res, pool) => {
               `UPDATE admin.user_master SET refresh_token = null`,
               (err, result) => {
                 if (err) {
-                  res.send(err);
-                }
+                  return res.send(err);
+                } else res.sendStatus(403);
               }
             );
           }
