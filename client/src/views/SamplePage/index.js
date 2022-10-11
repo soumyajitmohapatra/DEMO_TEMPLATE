@@ -1,18 +1,27 @@
 import React, { Fragment } from "react";
 import { useFormik } from "formik";
-import { Box, Button } from "@mui/material";
+import { Box } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { getYupSchemaFromMetaData } from "../../component/Forms/yupSchemaCreator";
 import DynamicForm from "../../component/Forms/DynamicForm";
 import fieldData from "./fieldData";
+import AnimatedButton from "../../common/buttons/AnimatedButton";
+import { MdSend, MdCheckCircle } from "react-icons/md";
 
 function SamplePage() {
   const signupSchema = getYupSchemaFromMetaData(fieldData, [], []);
+  const [loading, setLoading] = React.useState(false);
+  const [success, setSuccess] = React.useState(false);
 
   const formik = useFormik({
     initialValues: {},
     onSubmit: (values) => {
-      alert(JSON.stringify(values, null, 2));
+      setLoading(true);
+      setTimeout(() => {
+        alert(JSON.stringify(values, null, 2));
+        setLoading(false);
+        setSuccess(true);
+      }, 2000);
     },
     validationSchema: signupSchema,
   });
@@ -68,9 +77,18 @@ function SamplePage() {
               )
             )}
           </Grid>
-          <Button variant="contained" type="submit" disabled={!formik.isValid}>
-            Submit
-          </Button>
+          <AnimatedButton
+            endIcon={success ? <MdCheckCircle /> : <MdSend />}
+            loading={loading}
+            variant="contained"
+            type="submit"
+            disabled={!formik.isValid || loading}
+            buttonTitle={"Send"}
+            style={{
+              padding: ".4rem 1.5rem",
+              marginTop: "1rem",
+            }}
+          />
         </form>
       </Box>
     </div>

@@ -197,7 +197,7 @@ const DynamicForm = ({ config, formik }) => {
                     size="small"
                     id={individualConfig.field}
                     name={individualConfig.field}
-                    label={individualConfig.name}
+                    label={individualConfig.label}
                     value={
                       formik.values[individualConfig.field]
                         ? formik.values[individualConfig.field]

@@ -21,6 +21,7 @@ const CardWrapper = styled(MainCard)(({ theme }) => ({
   overflow: "hidden",
   position: "relative",
   margin: "1rem 0",
+  borderRadius: "8px",
   "&:after": {
     content: '""',
     position: "absolute",
@@ -72,7 +73,7 @@ const DemoCard = ({ isLoading = true, data, reload = () => null }) => {
       {isLoading ? (
         <SkeletonEarningCard />
       ) : (
-        <CardWrapper border={false} content={true}>
+        <CardWrapper border={false} content>
           <Box sx={{ p: 2.25 }}>
             <Grid container direction="column">
               <Grid item>

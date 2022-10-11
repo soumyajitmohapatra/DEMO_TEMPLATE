@@ -1,12 +1,11 @@
-.App {
-  text-align: center;
-}
 .errmsg {
   color: firebrick;
 }
-.offscreen{
+
+.offscreen {
   display: none;
 }
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;
